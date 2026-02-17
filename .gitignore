@@ -1,0 +1,19 @@
+# Environment files
+*.env
+!*.env.example
+
+# Dependencies
+node_modules/
+.DS_Store
+
+# Build outputs
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# Kubernetes secrets
+k8s/*.env
+!k8s/*.env.example
