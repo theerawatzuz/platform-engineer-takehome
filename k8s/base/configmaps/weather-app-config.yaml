@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: weather-app-config
+  namespace: weather
+data:
+  WEATHER_API_URL: "https://api.weatherapi.com/v1/current.json"
+  WEATHER_LOCATION: "osaka"
+  WEATHER_Q: "34.6937,135.5023"
+  PORT: "3001"
