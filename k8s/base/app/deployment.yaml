@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-app
+  namespace: weather
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: weather-app
+  template:
+    metadata:
+      labels:
+        app: weather-app
+    spec:
+      containers:
+        - name: weather-app
+          image: bankt21/weather-ingest:v5
+          ports:
+            - containerPort: 3001
+          envFrom:
+            - configMapRef:
+                name: weather-app-config
+            - configMapRef:
+                name: postgres-config
+            - secretRef:
+                name: weather-app-secrets
+            - secretRef:
+                name: postgres-secrets
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+              ephemeral-storage: "256Mi"
