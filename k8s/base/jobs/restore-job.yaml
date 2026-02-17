@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-restore-003
+  namespace: weather
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: restore-sa
+      restartPolicy: Never
+      containers:
+        - name: restore
+          image: postgres:16-alpine
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+            - secretRef:
+                name: postgres-secrets
+            - secretRef:
+                name: backup-aws-secrets
+          env:
+            - name: RESTORE_DB
+              value: weather_restore
+            - name: RESTORE_S3_KEY
+              value: postgres/backup-20260213044526.sql.gz
+            - name: VERIFY_TABLE
+              value: weather_observations
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -euo pipefail
+              apk add --no-cache aws-cli gzip >/dev/null
+
+              echo "[restore] download s3://$S3_BUCKET/$RESTORE_S3_KEY"
+              aws s3 cp "s3://$S3_BUCKET/$RESTORE_S3_KEY" /tmp/backup.sql.gz
+
+              echo "[restore] terminate active sessions on $RESTORE_DB"
+
+              PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 \
+                -c "SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = '$RESTORE_DB'
+                    AND pid <> pg_backend_pid();"
+
+              echo "[restore] drop & recreate database"
+
+              PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 \
+                -c "DROP DATABASE IF EXISTS $RESTORE_DB;"
+
+              PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 \
+                -c "CREATE DATABASE $RESTORE_DB;"
+
+              echo "[restore] restore into $RESTORE_DB"
+
+              gunzip -c /tmp/backup.sql.gz | \
+                PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -d "$RESTORE_DB" -v ON_ERROR_STOP=1
+
+              echo "[verify] row count from $VERIFY_TABLE"
+
+              PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -d "$RESTORE_DB" -v ON_ERROR_STOP=1 \
+                -c "SELECT count(*) AS rows FROM $VERIFY_TABLE;"
+
+              echo "[restore] DONE"
