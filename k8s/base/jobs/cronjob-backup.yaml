@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: weather
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600
+      backoffLimit: 3
+      template:
+        spec:
+          serviceAccountName: backup-sa
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: postgres:16-alpine
+              envFrom:
+                - configMapRef:
+                    name: postgres-config
+                - secretRef:
+                    name: postgres-secrets
+                - secretRef:
+                    name: backup-aws-secrets
+                - secretRef:
+                    name: discord-secrets
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -euo pipefail
+
+                  apk add --no-cache aws-cli gzip curl >/dev/null
+
+                  notify () {
+                    STATUS="$1"
+                    MSG="$2"
+                    curl -sS -H "Content-Type: application/json" \
+                      -d "{\"content\":\"[$STATUS] postgres-backup: $MSG\"}" \
+                      "$DISCORD_WEBHOOK_URL" >/dev/null || true
+                  }
+
+                  START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+                  TIMESTAMP=$(date +%Y%m%d%H%M%S)
+                  FILE="backup-$TIMESTAMP.sql.gz"
+                  LOCAL="/tmp/$FILE"
+                  PREFIX="postgres/"
+                  DEST="s3://$S3_BUCKET/$PREFIX$FILE"
+
+                  notify "INFO" "started file=$FILE"
+
+                  if ! PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
+                        -h postgres \
+                        -U "$POSTGRES_USER" \
+                        -d "$POSTGRES_DB" \
+                        | gzip > "$LOCAL"; then
+                      notify "ERROR" "pg_dump failed file=$FILE"
+                      exit 1
+                  fi
+
+                  if ! aws s3 cp "$LOCAL" "$DEST"; then
+                      notify "ERROR" "s3 upload failed dest=$DEST"
+                      exit 2
+                  fi
+
+                  notify "INFO" "upload succeeded dest=$DEST"
