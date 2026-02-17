@@ -144,36 +144,16 @@ Verify:
 kubectl get cronjobs -n weather
 ```
 
-```
-mermaid
----
-config:
-  theme: default
-  look: neo
-title: Overall Architecture
----
-flowchart LR
-    subgraph CLUSTER[Kubernetes cluster: weather]
-        direction TD
-            subgraph DEPLOYMENT[Weather ingres API]
-            direction TD
-                POD(Deployment: weather app)
-            end
-            subgraph CRONJOB[Cronjob]
-                direction LR
-                    JOB1[Cronjob: weather-ingres]
-                    JOB2[Cronjob: postgres-backup]
-            end
-        DEPLOYMENT ---> DATABASE[(Postgres)] ---> PVC["PersistentVolume (5G)"]
-        DEPLOYMENT ---> SERVICE([Service weather-app])
-        SERVICE <---> CRONJOB
-    end
-    subgraph CLOUDPROVIDER[AWS]
-        direction TD
-            STORAGE[S3]
-    end
+## Architecture Diagram
 
-    JOB1 --"External API"--> TPT>Weather API]
-    Dev[Dev Machine] ---> DEPLOYMENT
-    JOB2 --"pg_dump -> upload.sql.gz"--> STORAGE[(S3 Backup-weather)]
-```
+1.Overall Architecture Diagram
+![Architecture Diagram](docs/overall-diagram2-2026-02-17-143558.svg)
+
+2.Backup Architecture
+![Backup Architecture](docs/backup-flow-2026-02-14-073315.svg)
+
+3.Security Architecture
+![Security Architecture](docs/Security-2026-02-17-144443.svg)
+
+4.Restore Architecture
+![Restore Architecture](docs/restore-flow-2026-02-17-144821.svg)
