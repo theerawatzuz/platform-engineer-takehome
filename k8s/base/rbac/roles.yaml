@@ -1,0 +1,50 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-secret-reader
+  namespace: weather
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["backup-aws-secrets", "discord-secrets", "postgres-secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup-secret-reader-binding
+  namespace: weather
+subjects:
+  - kind: ServiceAccount
+    name: backup-sa
+    namespace: weather
+roleRef:
+  kind: Role
+  name: backup-secret-reader
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: restore-secret-reader
+  namespace: weather
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["backup-aws-secrets", "postgres-secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: restore-secret-reader-binding
+  namespace: weather
+subjects:
+  - kind: ServiceAccount
+    name: restore-sa
+    namespace: weather
+roleRef:
+  kind: Role
+  name: restore-secret-reader
+  apiGroup: rbac.authorization.k8s.io
