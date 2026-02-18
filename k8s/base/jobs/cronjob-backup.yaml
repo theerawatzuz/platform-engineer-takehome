@@ -22,6 +22,8 @@ spec:
               envFrom:
                 - configMapRef:
                     name: postgres-config
+                - configMapRef:
+                    name: backup-config
                 - secretRef:
                     name: postgres-secrets
                 - secretRef:
@@ -44,7 +46,7 @@ spec:
                       "$DISCORD_WEBHOOK_URL" >/dev/null || true
                   }
 
-                  START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+                  START_TIME=$(date -u +%s)
                   TIMESTAMP=$(date +%Y%m%d%H%M%S)
                   FILE="backup-$TIMESTAMP.sql.gz"
                   LOCAL="/tmp/$FILE"
@@ -68,3 +70,59 @@ spec:
                   fi
 
                   notify "INFO" "upload succeeded dest=$DEST"
+
+                  # Integrity check
+                  if [ "${BACKUP_INTEGRITY_CHECK:-true}" = "true" ]; then
+                    SIZE_LOCAL=$(stat -c%s "$LOCAL" 2>/dev/null || stat -f%z "$LOCAL")
+                    SIZE_S3=$(aws s3api head-object --bucket "$S3_BUCKET" --key "$PREFIX$FILE" --query ContentLength --output text)
+
+                    if [ "$SIZE_LOCAL" != "$SIZE_S3" ]; then
+                        notify "ERROR" "integrity check failed local=$SIZE_LOCAL s3=$SIZE_S3"
+                        exit 3
+                    fi
+
+                    notify "INFO" "integrity verified size=$SIZE_LOCAL"
+                  fi
+
+                  # Retention cleanup
+                  RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
+                  CUTOFF_DATE=$(awk -v days="$RETENTION_DAYS" 'BEGIN {
+                    secs = systime() - (days * 86400)
+                    print strftime("%Y%m%d%H%M%S", secs)
+                  }')
+
+                  notify "INFO" "cleanup started retention=${RETENTION_DAYS}d cutoff=$CUTOFF_DATE"
+
+                  DELETED_COUNT=0
+                  aws s3api list-objects-v2 \
+                    --bucket "$S3_BUCKET" \
+                    --prefix "$PREFIX" \
+                    --query 'Contents[?Size > `0`].[Key]' \
+                    --output text | grep "backup-" | while read -r KEY; do
+                    
+                    if [ -z "$KEY" ] || [ "$KEY" = "None" ]; then
+                      continue
+                    fi
+
+                    BACKUP_TS=$(echo "$KEY" | grep -oE '[0-9]{14}' | head -1)
+                    
+                    if [ -z "$BACKUP_TS" ]; then
+                      continue
+                    fi
+
+                    if [ "$BACKUP_TS" -lt "$CUTOFF_DATE" ]; then
+                      if aws s3 rm "s3://$S3_BUCKET/$KEY"; then
+                        DELETED_COUNT=$((DELETED_COUNT + 1))
+                        notify "INFO" "deleted old backup key=$KEY ts=$BACKUP_TS"
+                      else
+                        notify "WARN" "failed to delete key=$KEY"
+                      fi
+                    fi
+                  done
+
+                  notify "INFO" "cleanup completed deleted=$DELETED_COUNT"
+
+                  END_TIME=$(date -u +%s)
+                  DURATION=$((END_TIME - START_TIME))
+
+                  notify "SUCCESS" "backup completed file=$FILE size=$SIZE_LOCAL duration=${DURATION}s"
