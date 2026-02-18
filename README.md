@@ -63,7 +63,10 @@ kubectl get secrets -n weather
 
 ```bash
 kubectl apply -f base/configmaps/postgres-config.yaml
+
 kubectl apply -f base/configmaps/weather-app-config.yaml
+
+kubectl apply -f base/configmaps/backup-config.yaml
 ```
 
 Verify:
@@ -76,6 +79,7 @@ kubectl get configmaps -n weather
 
 ```bash
 kubectl apply -f base/rbac/serviceaccounts.yaml
+
 kubectl apply -f base/rbac/roles.yaml
 ```
 
@@ -83,7 +87,9 @@ Verify:
 
 ```bash
 kubectl get serviceaccounts -n weather
+
 kubectl get roles -n weather
+
 kubectl get rolebindings -n weather
 ```
 
@@ -91,6 +97,7 @@ kubectl get rolebindings -n weather
 
 ```bash
 kubectl apply -f base/postgres/service.yaml
+
 kubectl apply -f base/postgres/statefulset.yaml
 ```
 
@@ -104,7 +111,9 @@ Verify:
 
 ```bash
 kubectl get statefulset -n weather
+
 kubectl get pvc -n weather
+
 kubectl logs statefulset/postgres -n weather
 ```
 
@@ -112,6 +121,7 @@ kubectl logs statefulset/postgres -n weather
 
 ```bash
 kubectl apply -f base/app/service.yaml
+
 kubectl apply -f base/app/deployment.yaml
 ```
 
@@ -125,16 +135,19 @@ Verify:
 
 ```bash
 kubectl get deployment -n weather
+
 kubectl get pods -n weather
+
 kubectl logs deployment/weather-app -n weather
 ```
 
 ## Step 7: Deploy CronJobs
 
-Note: CronJobs require postgres-config ConfigMap to be applied first (already done in Step 3).
+Note: CronJobs require postgres-config and backup-config ConfigMap to be applied first (already done in Step 3).
 
 ```bash
 kubectl apply -f base/jobs/cronjob-weather.yaml
+
 kubectl apply -f base/jobs/cronjob-backup.yaml
 ```
 
@@ -156,4 +169,4 @@ kubectl get cronjobs -n weather
 ![Security Architecture](docs/Security-2026-02-17-144443.svg)
 
 4.Restore Architecture
-![Restore Architecture](docs/restore-flow-2026-02-17-144821.svg)
+![Restore Architecture](docs/restore-flow-2026-02-17-160807.svg)
