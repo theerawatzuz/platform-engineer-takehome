@@ -94,11 +94,7 @@ spec:
                   notify "INFO" "cleanup started retention=${RETENTION_DAYS}d cutoff=$CUTOFF_DATE"
 
                   DELETED_COUNT=0
-                  aws s3api list-objects-v2 \
-                    --bucket "$S3_BUCKET" \
-                    --prefix "$PREFIX" \
-                    --query 'Contents[?Size > `0`].[Key]' \
-                    --output text | grep "backup-" | while read -r KEY; do
+                  while read -r KEY; do
                     
                     if [ -z "$KEY" ] || [ "$KEY" = "None" ]; then
                       continue
@@ -118,7 +114,11 @@ spec:
                         notify "WARN" "failed to delete key=$KEY"
                       fi
                     fi
-                  done
+                  done < <(aws s3api list-objects-v2 \
+                    --bucket "$S3_BUCKET" \
+                    --prefix "$PREFIX" \
+                    --query 'Contents[?Size > `0`].[Key]' \
+                    --output text | grep "backup-")
 
                   notify "INFO" "cleanup completed deleted=$DELETED_COUNT"
 

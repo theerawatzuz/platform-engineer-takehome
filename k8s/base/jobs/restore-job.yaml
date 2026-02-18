@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: postgres-restore-006
+  name: postgres-restore-007
   namespace: weather
 spec:
   backoffLimit: 0
@@ -23,7 +23,7 @@ spec:
             - name: RESTORE_DB
               value: weather_restore
             - name: RESTORE_S3_KEY
-              value: postgres/backup-20260217151026.sql.gz
+              value: postgres/backup-20260218033523.sql.gz
             - name: VERIFY_TABLE
               value: weather_observations
           command:
