@@ -162,11 +162,11 @@ kubectl get cronjobs -n weather
 1.Overall Architecture Diagram
 ![Architecture Diagram](docs/overall-diagram2-2026-02-17-143558.svg)
 
-2.Backup Architecture
-![Backup Architecture](docs/backup-flow-2026-02-14-073315.svg)
+2.Security Architecture
+![Security Architecture](docs/Security-2026-02-18-024607.svg)
 
-3.Security Architecture
-![Security Architecture](docs/Security-2026-02-17-144443.svg)
+3.Backup Architecture
+![Backup Architecture](docs/backup-flow-2026-02-18-022851.svg)
 
 4.Restore Architecture
 ![Restore Architecture](docs/restore-flow-2026-02-17-160807.svg)
