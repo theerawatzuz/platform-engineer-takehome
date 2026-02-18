@@ -169,4 +169,4 @@ kubectl get cronjobs -n weather
 ![Backup Architecture](docs/backup-flow-2026-02-18-022851.svg)
 
 4.Restore Architecture
-![Restore Architecture](docs/restore-flow-2026-02-17-160807.svg)
+![Restore Architecture](docs/restore-flow-2026-02-18-032235.svg)
